@@ -149,6 +149,16 @@ public class HttpServerOptions extends NetServerOptions {
    */
   public static final TracingPolicy DEFAULT_TRACING_POLICY = TracingPolicy.ALWAYS;
 
+  /*
+   * Default inbound bandwidth limit in bytes/sec = 0 (0 implies unthrottled)
+   */
+  public static final long DEFAULT_INBOUND_GLOBAL_BANDWIDTH_LIMIT = 0;
+
+  /**
+   * Default outbound bandwidth limit in bytes/sec = 0 (0 implies unthrottled)
+   */
+  public static final long DEFAULT_OUTBOUND_GLOBAL_BANDWIDTH_LIMIT = 0;
+
   private boolean compressionSupported;
   private int compressionLevel;
   private List<CompressionOptions> compressors;
@@ -173,6 +183,8 @@ public class HttpServerOptions extends NetServerOptions {
   private boolean webSocketPreferredClientNoContext;
   private int webSocketClosingTimeout;
   private TracingPolicy tracingPolicy;
+  private long inboundGlobalBandwidth;
+  private long outboundGlobalBandwidth;
 
   /**
    * Default constructor
@@ -214,6 +226,8 @@ public class HttpServerOptions extends NetServerOptions {
     this.webSocketAllowServerNoContext = other.webSocketAllowServerNoContext;
     this.webSocketClosingTimeout = other.webSocketClosingTimeout;
     this.tracingPolicy = other.tracingPolicy;
+    this.inboundGlobalBandwidth = other.inboundGlobalBandwidth;
+    this.outboundGlobalBandwidth = other.outboundGlobalBandwidth;
   }
 
   /**
@@ -262,6 +276,8 @@ public class HttpServerOptions extends NetServerOptions {
     webSocketAllowServerNoContext = DEFAULT_WEBSOCKET_ALLOW_SERVER_NO_CONTEXT;
     webSocketClosingTimeout = DEFAULT_WEBSOCKET_CLOSING_TIMEOUT;
     tracingPolicy = DEFAULT_TRACING_POLICY;
+    inboundGlobalBandwidth = DEFAULT_INBOUND_GLOBAL_BANDWIDTH_LIMIT;
+    outboundGlobalBandwidth = DEFAULT_OUTBOUND_GLOBAL_BANDWIDTH_LIMIT;
   }
 
   @Override
@@ -1010,6 +1026,24 @@ public class HttpServerOptions extends NetServerOptions {
    */
   public HttpServerOptions setWebSocketClosingTimeout(int webSocketClosingTimeout) {
     this.webSocketClosingTimeout = webSocketClosingTimeout;
+    return this;
+  }
+
+  public long getInboundGlobalBandwidth() {
+    return this.inboundGlobalBandwidth;
+  }
+
+  public long getOutboundGlobalBandwidth() {
+    return this.outboundGlobalBandwidth;
+  }
+
+  public HttpServerOptions setInboundGlobalBandwidth(long inboundGlobalBandwidth) {
+    this.inboundGlobalBandwidth = inboundGlobalBandwidth;
+    return this;
+  }
+
+  public HttpServerOptions setOutboundGlobalBandwidth(long outboundGlobalBandwidth) {
+    this.outboundGlobalBandwidth = outboundGlobalBandwidth;
     return this;
   }
 

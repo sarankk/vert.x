@@ -65,6 +65,11 @@ public class HttpServerOptionsConverter {
             obj.setHttp2ConnectionWindowSize(((Number)member.getValue()).intValue());
           }
           break;
+        case "inboundGlobalBandwidth":
+          if (member.getValue() instanceof Number) {
+            obj.setInboundGlobalBandwidth(((Number)member.getValue()).longValue());
+          }
+          break;
         case "initialSettings":
           if (member.getValue() instanceof JsonObject) {
             obj.setInitialSettings(new io.vertx.core.http.Http2Settings((io.vertx.core.json.JsonObject)member.getValue()));
@@ -98,6 +103,11 @@ public class HttpServerOptionsConverter {
         case "maxWebSocketMessageSize":
           if (member.getValue() instanceof Number) {
             obj.setMaxWebSocketMessageSize(((Number)member.getValue()).intValue());
+          }
+          break;
+        case "outboundGlobalBandwidth":
+          if (member.getValue() instanceof Number) {
+            obj.setOutboundGlobalBandwidth(((Number)member.getValue()).longValue());
           }
           break;
         case "perFrameWebSocketCompressionSupported":
@@ -166,6 +176,7 @@ public class HttpServerOptionsConverter {
     json.put("decompressionSupported", obj.isDecompressionSupported());
     json.put("handle100ContinueAutomatically", obj.isHandle100ContinueAutomatically());
     json.put("http2ConnectionWindowSize", obj.getHttp2ConnectionWindowSize());
+    json.put("inboundGlobalBandwidth", obj.getInboundGlobalBandwidth());
     if (obj.getInitialSettings() != null) {
       json.put("initialSettings", obj.getInitialSettings().toJson());
     }
@@ -175,6 +186,7 @@ public class HttpServerOptionsConverter {
     json.put("maxInitialLineLength", obj.getMaxInitialLineLength());
     json.put("maxWebSocketFrameSize", obj.getMaxWebSocketFrameSize());
     json.put("maxWebSocketMessageSize", obj.getMaxWebSocketMessageSize());
+    json.put("outboundGlobalBandwidth", obj.getOutboundGlobalBandwidth());
     json.put("perFrameWebSocketCompressionSupported", obj.getPerFrameWebSocketCompressionSupported());
     json.put("perMessageWebSocketCompressionSupported", obj.getPerMessageWebSocketCompressionSupported());
     if (obj.getTracingPolicy() != null) {
