@@ -32,6 +32,7 @@ import io.vertx.core.http.impl.cgbystrom.FlashPolicyHandler;
 import io.vertx.core.impl.ContextInternal;
 import io.vertx.core.impl.EventLoopContext;
 import io.vertx.core.impl.VertxInternal;
+import io.vertx.core.net.TrafficShapingOptions;
 import io.vertx.core.net.impl.SslContextProvider;
 import io.vertx.core.net.impl.SslHandshakeCompletionHandler;
 import io.vertx.core.net.impl.VertxHandler;
@@ -99,7 +100,23 @@ public class HttpServerWorker implements BiConsumer<Channel, SslContextProvider>
     this.exceptionHandler = exceptionHandler;
     this.compressionOptions = compressionOptions;
     this.encodingDetector = compressionOptions != null ? new EncodingDetector(compressionOptions)::determineEncoding : null;
-    this.trafficShapingHandler = new GlobalTrafficShapingHandler(vertx.getEventLoopGroup(), options.getOutboundGlobalBandwidth(), options.getInboundGlobalBandwidth());
+    this.trafficShapingHandler = createTrafficShapingHandler(vertx.getEventLoopGroup(), options.getTrafficShapingOptions());
+  }
+
+  private GlobalTrafficShapingHandler createTrafficShapingHandler(EventLoopGroup eventLoopGroup, TrafficShapingOptions options)
+  {
+    GlobalTrafficShapingHandler trafficShapingHandler;
+    if (options.getMaxDelayToWaitTime() != 0 && options.getCheckIntervalForStats() != 0) {
+      trafficShapingHandler = new GlobalTrafficShapingHandler(eventLoopGroup, options.getOutboundGlobalBandwidth(), options.getInboundGlobalBandwidth(), options.getCheckIntervalForStats(), options.getMaxDelayToWaitTime());
+    } else if (options.getCheckIntervalForStats() != 0) {
+    trafficShapingHandler = new GlobalTrafficShapingHandler(eventLoopGroup, options.getOutboundGlobalBandwidth(), options.getInboundGlobalBandwidth(), options.getCheckIntervalForStats());
+    } else {
+      trafficShapingHandler = new GlobalTrafficShapingHandler(eventLoopGroup, options.getOutboundGlobalBandwidth(), options.getInboundGlobalBandwidth());
+    }
+    if (options.getPeakOutboundGlobalBandwidth() != 0) {
+      trafficShapingHandler.setMaxGlobalWriteSize(options.getPeakOutboundGlobalBandwidth());
+    }
+    return trafficShapingHandler;
   }
 
   @Override
@@ -198,7 +215,7 @@ public class HttpServerWorker implements BiConsumer<Channel, SslContextProvider>
         });
       }
     }
-    if (options.getOutboundGlobalBandwidth() > 0 || options.getInboundGlobalBandwidth() > 0) {
+    if (options.getTrafficShapingOptions() != null && options.getTrafficShapingOptions().getOutboundGlobalBandwidth() > 0 || options.getTrafficShapingOptions().getInboundGlobalBandwidth() > 0) {
       pipeline.addFirst("globalTrafficShaping", trafficShapingHandler);
     }
   }
@@ -279,7 +296,7 @@ public class HttpServerWorker implements BiConsumer<Channel, SslContextProvider>
     if (options.isCompressionSupported()) {
       pipeline.addLast("deflater", new HttpChunkContentCompressor(compressionOptions));
     }
-    if (sslContextProvider.isSsl() || options.isCompressionSupported() || options.getOutboundGlobalBandwidth() > 0) {
+    if (sslContextProvider.isSsl() || options.isCompressionSupported() || (options.getTrafficShapingOptions() != null && options.getTrafficShapingOptions().getOutboundGlobalBandwidth() > 0)) {
       // only add ChunkedWriteHandler when SSL is enabled otherwise it is not needed as FileRegion is used.
       pipeline.addLast("chunkedWriter", new ChunkedWriteHandler());       // For large file / sendfile support
     }

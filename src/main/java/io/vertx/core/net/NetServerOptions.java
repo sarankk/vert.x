@@ -70,6 +70,16 @@ public class NetServerOptions extends TCPSSLOptions {
    */
   public static final TimeUnit DEFAULT_PROXY_PROTOCOL_TIMEOUT_TIME_UNIT = TimeUnit.SECONDS;
 
+  /*
+   * Default inbound bandwidth limit in bytes/sec = 0 (0 implies unthrottled)
+   */
+  public static final long DEFAULT_INBOUND_GLOBAL_BANDWIDTH_LIMIT = 0;
+
+  /**
+   * Default outbound bandwidth limit in bytes/sec = 0 (0 implies unthrottled)
+   */
+  public static final long DEFAULT_OUTBOUND_GLOBAL_BANDWIDTH_LIMIT = 0;
+
   private int port;
   private String host;
   private int acceptBacklog;
@@ -78,6 +88,7 @@ public class NetServerOptions extends TCPSSLOptions {
   private boolean useProxyProtocol;
   private long proxyProtocolTimeout;
   private TimeUnit proxyProtocolTimeoutUnit;
+  private TrafficShapingOptions trafficShapingOptions;
 
   /**
    * Default constructor
@@ -104,6 +115,7 @@ public class NetServerOptions extends TCPSSLOptions {
     this.proxyProtocolTimeoutUnit = other.getProxyProtocolTimeoutUnit() != null ?
       other.getProxyProtocolTimeoutUnit() :
       DEFAULT_PROXY_PROTOCOL_TIMEOUT_TIME_UNIT;
+    this.trafficShapingOptions = other.trafficShapingOptions;
   }
 
   /**
@@ -491,6 +503,24 @@ public class NetServerOptions extends TCPSSLOptions {
     return proxyProtocolTimeoutUnit;
   }
 
+  /**
+   * @return traffic shaping options used by Net server.
+   */
+  public TrafficShapingOptions getTrafficShapingOptions() {
+    return this.trafficShapingOptions;
+  }
+
+  /**
+   * Set traffic shaping options. If not specified, traffic is unthrottled.
+   *
+   * @param trafficShapingOptions options used by traffic handler
+   * @return a reference to this, so the API can be used fluently
+   */
+  public NetServerOptions setTrafficShapingOptions(TrafficShapingOptions trafficShapingOptions) {
+    this.trafficShapingOptions = trafficShapingOptions;
+    return this;
+  }
+
   private void init() {
     this.port = DEFAULT_PORT;
     this.host = DEFAULT_HOST;
@@ -500,5 +530,6 @@ public class NetServerOptions extends TCPSSLOptions {
     this.useProxyProtocol = DEFAULT_USE_PROXY_PROTOCOL;
     this.proxyProtocolTimeout = DEFAULT_PROXY_PROTOCOL_TIMEOUT;
     this.proxyProtocolTimeoutUnit = DEFAULT_PROXY_PROTOCOL_TIMEOUT_TIME_UNIT;
+    this.trafficShapingOptions = new TrafficShapingOptions(DEFAULT_INBOUND_GLOBAL_BANDWIDTH_LIMIT, DEFAULT_OUTBOUND_GLOBAL_BANDWIDTH_LIMIT);
   }
 }

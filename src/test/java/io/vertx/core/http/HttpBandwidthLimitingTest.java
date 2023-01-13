@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import io.vertx.core.net.TrafficShapingOptions;
 import org.apache.commons.lang.time.StopWatch;
 import org.junit.After;
 import org.junit.Before;
@@ -229,8 +230,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
       HttpServerOptions options = new HttpServerOptions()
                                     .setHost(DEFAULT_HTTP_HOST)
                                     .setPort(openPort)
-                                    .setInboundGlobalBandwidth(inboundLimit)
-                                    .setOutboundGlobalBandwidth(outboundLimit);
+                                    .setTrafficShapingOptions(new TrafficShapingOptions(inboundLimit, outboundLimit));
 
       return vertx.createHttpServer(options);
     }
@@ -238,8 +238,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     private static HttpServer http2Server(Vertx vertx, int inboundLimit, int outboundLimit) {
       int openPort = findFreePort();
       HttpServerOptions options = createHttp2ServerOptions(openPort, DEFAULT_HTTP_HOST)
-                                    .setInboundGlobalBandwidth(inboundLimit)
-                                    .setOutboundGlobalBandwidth(outboundLimit);
+                                    .setTrafficShapingOptions(new TrafficShapingOptions(inboundLimit, outboundLimit));
 
       return vertx.createHttpServer(options);
     }
