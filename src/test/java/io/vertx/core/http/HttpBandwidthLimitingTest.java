@@ -11,6 +11,9 @@
 package io.vertx.core.http;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -108,12 +111,19 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
 
     long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
-    CountDownLatch waitForResponse = new CountDownLatch(1);
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
               .compose(HttpClientRequest::send)
-              .compose(HttpClientResponse::body)
-              .onComplete(body -> waitForResponse.countDown());
-    waitForResponse.await();
+              .onComplete(resp -> {
+                resp.result().bodyHandler(body -> {
+                  try {
+                    Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), body.getBytes().length);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                  testComplete();
+                });
+              });
+    await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
     Assert.assertTrue(elapsedMillis > 1000);
