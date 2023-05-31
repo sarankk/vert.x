@@ -14,6 +14,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import io.vertx.core.AbstractVerticle;
@@ -21,7 +22,6 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.net.TrafficShapingOptions;
-import org.apache.commons.lang.time.StopWatch;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -88,70 +88,66 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     Buffer expectedBuffer = TestUtils.randomBuffer(TEST_CONTENT_SIZE);
 
     HttpServer testServer = serverFactory.apply(vertx);
-    StopWatch watch = new StopWatch();
     testServer.requestHandler(HANDLERS.bufferRead(expectedBuffer));
     startServer(testServer);
 
-    watch.start();
+    long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     read(expectedBuffer, testServer, testClient);
     await();
-    watch.stop();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue(watch.getTime() > expectedTimeMillis(TEST_CONTENT_SIZE, OUTBOUND_LIMIT));
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(TEST_CONTENT_SIZE, OUTBOUND_LIMIT));
   }
 
   @Test
   public void sendFileIsThrottled() throws Exception {
-    StopWatch watch = new StopWatch();
     HttpServer testServer = serverFactory.apply(vertx);
     testServer.requestHandler(HANDLERS.getFile(sampleF));
     startServer(testServer);
 
-    watch.start();
+    long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
               .compose(HttpClientRequest::send)
               .compose(HttpClientResponse::body)
               .onComplete(body -> testComplete());
     await();
-    watch.stop();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue(watch.getTime() > 1000);
+    Assert.assertTrue(elapsedMillis > 1000);
   }
 
   @Test
   public void dataUploadIsThrottled() throws Exception {
     Buffer expectedBuffer = TestUtils.randomBuffer((TEST_CONTENT_SIZE));
 
-    StopWatch watch = new StopWatch();
     HttpServer testServer = serverFactory.apply(vertx);
     testServer.requestHandler(HANDLERS.bufferWrite(expectedBuffer));
     startServer(testServer);
 
-    watch.start();
+    long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     write(expectedBuffer, testServer, testClient);
     await();
-    watch.stop();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue(watch.getTime() > expectedTimeMillis(TEST_CONTENT_SIZE, INBOUND_LIMIT));
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(TEST_CONTENT_SIZE, INBOUND_LIMIT));
   }
 
   @Test
   public void fileUploadIsThrottled() throws Exception {
-    StopWatch watch = new StopWatch();
     HttpServer testServer = serverFactory.apply(vertx);
     testServer.requestHandler(HANDLERS.uploadFile(sampleF));
     startServer(testServer);
 
-    watch.start();
+    long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     upload(testServer, testClient, sampleF);
     await();
-    watch.stop();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue( watch.getTime() > 1000);
+    Assert.assertTrue( elapsedMillis > 1000);
   }
 
   @Test
@@ -167,10 +163,10 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     }, new DeploymentOptions().setInstances(numEventLoops));
 
     HttpClient testClient = clientFactory.apply(vertx);
-    StopWatch watch = new StopWatch();
     CountDownLatch waitForResponse = new CountDownLatch(4);
+    AtomicLong startTime = new AtomicLong();
     listenLatch.onComplete(v -> {
-      watch.start();
+      startTime.set(System.nanoTime());
       for (int i=0; i<4; i++) {
         testClient.request(HttpMethod.GET, DEFAULT_HTTP_PORT, DEFAULT_HTTP_HOST,"/get-file")
                   .compose(HttpClientRequest::send)
@@ -179,8 +175,8 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
       }
     });
     awaitLatch(waitForResponse);
-    watch.stop();
-    Assert.assertTrue(watch.getTime() > 6000); // because there are simultaneous 4 requests
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
+    Assert.assertTrue(elapsedMillis > 6000); // because there are simultaneous 4 requests
   }
 
   /**

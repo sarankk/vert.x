@@ -17,8 +17,8 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.lang.time.StopWatch;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,8 +72,7 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
 
   @Test
   public void sendBufferThrottled() {
-    StopWatch watch = new StopWatch();
-    watch.start();
+    long startTime = System.nanoTime();
 
     Buffer expected = TestUtils.randomBuffer(64 * 1024 * 4);
     Buffer received = Buffer.buffer();
@@ -95,8 +94,8 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
           if (received.length() == expected.length()) {
             long expectedTimeInMillis = expectedTimeMillis(received.length(), OUTBOUND_LIMIT);
             assertEquals(expected, received);
-            watch.stop();
-            assertTimeTakenFallsInRange(expectedTimeInMillis, watch.getTime());
+            long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+            assertTimeTakenFallsInRange(expectedTimeInMillis, elapsedMillis);
             testComplete();
           }
         });
@@ -108,8 +107,7 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
 
   @Test
   public void sendFileIsThrottled() throws Exception {
-    StopWatch watch = new StopWatch();
-    watch.start();
+    long startTime = System.nanoTime();
 
     File fDir = testFolder.newFolder();
     String content = TestUtils.randomUnicodeString(60000);
@@ -134,8 +132,8 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
           if (received.length() == expected.length()) {
             long expectedTimeInMillis= expectedTimeMillis(received.length(), OUTBOUND_LIMIT);
             assertEquals(expected, received);
-            watch.stop();
-            assertTimeTakenFallsInRange(expectedTimeInMillis, watch.getTime());
+            long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+            assertTimeTakenFallsInRange(expectedTimeInMillis, elapsedMillis);
             testComplete();
           }
         });
@@ -147,8 +145,7 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
 
   @Test
   public void dataUploadIsThrottled() {
-    StopWatch watch = new StopWatch();
-    watch.start();
+    long startTime = System.nanoTime();
 
     Buffer expected = TestUtils.randomBuffer(64 * 1024 * 4);
     Buffer received = Buffer.buffer();
@@ -159,8 +156,8 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
         if (received.length() == expected.length()) {
           long expectedTimeInMillis = expectedTimeMillis(received.length(), INBOUND_LIMIT);
           assertEquals(expected, received);
-          watch.stop();
-          assertTimeTakenFallsInRange(expectedTimeInMillis, watch.getTime());
+          long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+          assertTimeTakenFallsInRange(expectedTimeInMillis, elapsedMillis);
           testComplete();
         }
       });
@@ -184,8 +181,7 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
 
   @Test
   public void fileUploadIsThrottled() throws Exception {
-    StopWatch watch = new StopWatch();
-    watch.start();
+    long startTime = System.nanoTime();
 
     File fDir = testFolder.newFolder();
     String content = TestUtils.randomUnicodeString(60000);
@@ -199,8 +195,8 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
         if (received.length() == expected.length()) {
           long expectedTimeInMillis = expectedTimeMillis(received.length(), INBOUND_LIMIT);
           assertEquals(expected, received);
-          watch.stop();
-          assertTimeTakenFallsInRange(expectedTimeInMillis, watch.getTime());
+          long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
+          assertTimeTakenFallsInRange(expectedTimeInMillis, elapsedMillis);
           testComplete();
         }
       });
@@ -240,10 +236,10 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
       }
     }, new DeploymentOptions().setInstances(numEventLoops));
 
-    StopWatch watch = new StopWatch();
+    AtomicLong startTime = new AtomicLong();
     CountDownLatch waitForResponse = new CountDownLatch(4);
     listenLatch.onComplete(v -> {
-      watch.start();
+      startTime.set(System.nanoTime());
       for (int i=0; i<4; i++) {
         Buffer received = Buffer.buffer();
         Future<NetSocket> clientConnect = client.connect(testAddress);
@@ -262,9 +258,9 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
       }
     });
     waitForResponse.await();
-    watch.stop();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
     long expectedTimeInMillis= expectedTimeMillis(expected.length() * 4, OUTBOUND_LIMIT); // 4 simultaneous requests
-    assertTimeTakenFallsInRange(expectedTimeInMillis, watch.getTime());
+    assertTimeTakenFallsInRange(expectedTimeInMillis, elapsedMillis);
   }
 
   /**
