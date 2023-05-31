@@ -108,11 +108,12 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
 
     long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
+    CountDownLatch waitForResponse = new CountDownLatch(1);
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
               .compose(HttpClientRequest::send)
               .compose(HttpClientResponse::body)
-              .onComplete(body -> testComplete());
-    await();
+              .onComplete(body -> waitForResponse.countDown());
+    waitForResponse.await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
     Assert.assertTrue(elapsedMillis > 1000);
