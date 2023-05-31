@@ -109,9 +109,9 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
-              .compose(req -> req.send()
-                                 .compose(HttpClientResponse::body)
-                                 .onComplete(body -> testComplete()));
+              .compose(HttpClientRequest::send)
+              .compose(HttpClientResponse::body)
+              .onComplete(body -> testComplete());
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
