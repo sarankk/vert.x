@@ -160,7 +160,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue( elapsedMillis >  expectedTimeMillis(sampleF.length(), INBOUND_LIMIT));
+    Assert.assertTrue( elapsedMillis >  expectedTimeMillis(Files.size(Path.of(sampleF.getAbsolutePath())), INBOUND_LIMIT));
   }
 
   @Test
@@ -187,7 +187,11 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
                   .onComplete(resp -> {
                     resp.result().bodyHandler(body -> {
                       totalReceivedLength.addAndGet(body.getBytes().length);
-                      Assert.assertEquals(sampleF.length(), body.getBytes().length);
+                      try {
+                        Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), body.getBytes().length);
+                      } catch (IOException e) {
+                        throw new RuntimeException(e);
+                      }
                       waitForResponse.countDown();
                     });
                   });
@@ -207,7 +211,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
    * @return
    */
   private long expectedTimeMillis(long size, int rate) {
-    return (long) (TimeUnit.MILLISECONDS.convert((size / rate), TimeUnit.SECONDS) * 0.5); // multiplied by 0.5 to be more tolerant of time pauses during CI runs
+    return (long) (TimeUnit.MILLISECONDS.convert(( size / rate), TimeUnit.SECONDS) * 0.5); // multiplied by 0.5 to be more tolerant of time pauses during CI runs
   }
 
   private void read(Buffer expected, HttpServer server, HttpClient client) {
