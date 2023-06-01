@@ -165,7 +165,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
 
   @Test
   public void testSendFileTrafficShapedWithSharedServers() throws InterruptedException {
-    int numEventLoops = 2; // We start a shared TCP server with 2 event-loops
+    int numEventLoops = 3; // We start a shared TCP server with 3 event-loops
     Future<String> listenLatch = vertx.deployVerticle(() -> new AbstractVerticle() {
       @Override
       public void start(Promise<Void> startPromise) {
@@ -176,12 +176,12 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     }, new DeploymentOptions().setInstances(numEventLoops));
 
     HttpClient testClient = clientFactory.apply(vertx);
-    CountDownLatch waitForResponse = new CountDownLatch(2);
+    CountDownLatch waitForResponse = new CountDownLatch(3);
     AtomicLong startTime = new AtomicLong();
     AtomicLong totalReceivedLength = new AtomicLong();
     listenLatch.onComplete(v -> {
       startTime.set(System.nanoTime());
-      for (int i=0; i<2; i++) {
+      for (int i=0; i<3; i++) {
         testClient.request(HttpMethod.GET, DEFAULT_HTTP_PORT, DEFAULT_HTTP_HOST,"/get-file")
                   .compose(HttpClientRequest::send)
                   .onComplete(resp -> {
@@ -195,7 +195,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     });
     awaitLatch(waitForResponse);
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
-    Assert.assertTrue(elapsedMillis > expectedTimeMillis(totalReceivedLength.get(), OUTBOUND_LIMIT)); // because there are simultaneous 2 requests
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(totalReceivedLength.get(), OUTBOUND_LIMIT)); // because there are simultaneous 3 requests
   }
 
   /**
