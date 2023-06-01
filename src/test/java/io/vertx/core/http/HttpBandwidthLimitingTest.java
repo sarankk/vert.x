@@ -41,7 +41,7 @@ import io.vertx.test.core.TestUtils;
 
 @RunWith(Parameterized.class)
 public class HttpBandwidthLimitingTest extends Http2TestBase {
-  private static final int OUTBOUND_LIMIT = 2 * 64 * 1024;  // 64KB/s
+  private static final int OUTBOUND_LIMIT = 64 * 1024;  // 64KB/s
   private static final int INBOUND_LIMIT = 64 * 1024;   // 64KB/s
   private static final int TEST_CONTENT_SIZE = 64 * 1024 * 4;   // 64 * 4 = 256KB
 
@@ -126,7 +126,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue(elapsedMillis > 1000);
+    Assert.assertTrue(elapsedMillis > 2000);
   }
 
   @Test
@@ -158,12 +158,12 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue( elapsedMillis > 1000);
+    Assert.assertTrue( elapsedMillis > 3000);
   }
 
   @Test
   public void testSendFileTrafficShapedWithSharedServers() throws InterruptedException {
-    int numEventLoops = 4; // We start a shared TCP server with 4 event-loops
+    int numEventLoops = 2; // We start a shared TCP server with 2 event-loops
     Future<String> listenLatch = vertx.deployVerticle(() -> new AbstractVerticle() {
       @Override
       public void start(Promise<Void> startPromise) {
@@ -174,11 +174,11 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     }, new DeploymentOptions().setInstances(numEventLoops));
 
     HttpClient testClient = clientFactory.apply(vertx);
-    CountDownLatch waitForResponse = new CountDownLatch(4);
+    CountDownLatch waitForResponse = new CountDownLatch(2);
     AtomicLong startTime = new AtomicLong();
     listenLatch.onComplete(v -> {
       startTime.set(System.nanoTime());
-      for (int i=0; i<4; i++) {
+      for (int i=0; i<2; i++) {
         testClient.request(HttpMethod.GET, DEFAULT_HTTP_PORT, DEFAULT_HTTP_HOST,"/get-file")
                   .compose(HttpClientRequest::send)
                   .compose(HttpClientResponse::body)
@@ -187,7 +187,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     });
     awaitLatch(waitForResponse);
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
-    Assert.assertTrue(elapsedMillis > 6000); // because there are simultaneous 4 requests
+    Assert.assertTrue(elapsedMillis > 6000); // because there are simultaneous 2 requests
   }
 
   /**
