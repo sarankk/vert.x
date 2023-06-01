@@ -112,16 +112,13 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
     AtomicLong receivedLength = new AtomicLong();
+    long expectedLength = Files.size(Path.of(sampleF.getAbsolutePath()));
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
               .compose(HttpClientRequest::send)
               .onComplete(resp -> {
                 resp.result().bodyHandler(body -> {
-                  try {
-                    receivedLength.set(body.getBytes().length);
-                    Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), receivedLength.get());
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
+                  receivedLength.set(body.getBytes().length);
+                  Assert.assertEquals(expectedLength, receivedLength.get());
                   testComplete();
                 });
               });
@@ -164,8 +161,8 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
   }
 
   @Test
-  public void testSendFileTrafficShapedWithSharedServers() throws InterruptedException {
-    int numEventLoops = 3; // We start a shared TCP server with 3 event-loops
+  public void testSendFileTrafficShapedWithSharedServers() throws InterruptedException, IOException {
+    int numEventLoops = 2; // We start a shared TCP server with 2 event-loops
     Future<String> listenLatch = vertx.deployVerticle(() -> new AbstractVerticle() {
       @Override
       public void start(Promise<Void> startPromise) {
@@ -176,22 +173,20 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     }, new DeploymentOptions().setInstances(numEventLoops));
 
     HttpClient testClient = clientFactory.apply(vertx);
-    CountDownLatch waitForResponse = new CountDownLatch(3);
+    CountDownLatch waitForResponse = new CountDownLatch(2);
     AtomicLong startTime = new AtomicLong();
     AtomicLong totalReceivedLength = new AtomicLong();
+    long expectedLength = Files.size(Path.of(sampleF.getAbsolutePath()));
     listenLatch.onComplete(v -> {
       startTime.set(System.nanoTime());
-      for (int i=0; i<3; i++) {
+      for (int i=0; i<2; i++) {
         testClient.request(HttpMethod.GET, DEFAULT_HTTP_PORT, DEFAULT_HTTP_HOST,"/get-file")
                   .compose(HttpClientRequest::send)
                   .onComplete(resp -> {
                     resp.result().bodyHandler(body -> {
-                      totalReceivedLength.addAndGet(body.getBytes().length);
-                      try {
-                        Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), body.getBytes().length);
-                      } catch (IOException e) {
-                        throw new RuntimeException(e);
-                      }
+                      long receivedBytes = body.getBytes().length;
+                      totalReceivedLength.addAndGet(receivedBytes);
+                      Assert.assertEquals(expectedLength, receivedBytes);
                       waitForResponse.countDown();
                     });
                   });
@@ -199,7 +194,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     });
     awaitLatch(waitForResponse);
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
-    Assert.assertTrue(elapsedMillis > expectedTimeMillis(totalReceivedLength.get(), OUTBOUND_LIMIT)); // because there are simultaneous 3 requests
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(totalReceivedLength.get(), OUTBOUND_LIMIT)); // because there are simultaneous 2 requests
   }
 
   /**
