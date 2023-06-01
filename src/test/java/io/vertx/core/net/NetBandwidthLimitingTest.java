@@ -40,7 +40,7 @@ import static io.vertx.core.net.NetServerOptions.DEFAULT_PORT;
 public class NetBandwidthLimitingTest extends VertxTestBase {
 
   public static final String DEFAULT_HOST = "localhost";
-  private static final int OUTBOUND_LIMIT = 2 * 64 * 1024;  // 64KB/s
+  private static final int OUTBOUND_LIMIT = 64 * 1024;  // 64KB/s
   private static final int INBOUND_LIMIT = 64 * 1024;   // 64KB/s
 
   @Rule
