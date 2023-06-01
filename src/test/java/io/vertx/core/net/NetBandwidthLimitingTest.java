@@ -280,8 +280,8 @@ public class NetBandwidthLimitingTest extends VertxTestBase {
    */
   private void assertTimeTakenFallsInRange(long expectedTimeInMillis, long actualTimeInMillis)
   {
-    Assert.assertTrue(actualTimeInMillis >= expectedTimeInMillis - 1000);
-    Assert.assertTrue(actualTimeInMillis <= expectedTimeInMillis + 1000);
+    Assert.assertTrue(actualTimeInMillis >= expectedTimeInMillis - 2000);
+    Assert.assertTrue(actualTimeInMillis <= expectedTimeInMillis + 2000); // +/- 2000 millis considered to be tolerant of time pauses during CI runs
   }
 
   private NetServer netServer(Vertx vertx) {

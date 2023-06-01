@@ -111,12 +111,14 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
 
     long startTime = System.nanoTime();
     HttpClient testClient = clientFactory.apply(vertx);
+    AtomicLong receivedLength = new AtomicLong();
     testClient.request(HttpMethod.GET, testServer.actualPort(), DEFAULT_HTTP_HOST,"/get-file")
               .compose(HttpClientRequest::send)
               .onComplete(resp -> {
                 resp.result().bodyHandler(body -> {
                   try {
-                    Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), body.getBytes().length);
+                    receivedLength.set(body.getBytes().length);
+                    Assert.assertEquals(Files.size(Path.of(sampleF.getAbsolutePath())), receivedLength.get());
                   } catch (IOException e) {
                     throw new RuntimeException(e);
                   }
@@ -126,7 +128,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue(elapsedMillis > 2000);
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(receivedLength.get(), OUTBOUND_LIMIT));
   }
 
   @Test
@@ -158,7 +160,7 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     await();
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 
-    Assert.assertTrue( elapsedMillis > 3000);
+    Assert.assertTrue( elapsedMillis >  expectedTimeMillis(sampleF.length(), INBOUND_LIMIT));
   }
 
   @Test
@@ -176,18 +178,24 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
     HttpClient testClient = clientFactory.apply(vertx);
     CountDownLatch waitForResponse = new CountDownLatch(2);
     AtomicLong startTime = new AtomicLong();
+    AtomicLong totalReceivedLength = new AtomicLong();
     listenLatch.onComplete(v -> {
       startTime.set(System.nanoTime());
       for (int i=0; i<2; i++) {
         testClient.request(HttpMethod.GET, DEFAULT_HTTP_PORT, DEFAULT_HTTP_HOST,"/get-file")
                   .compose(HttpClientRequest::send)
-                  .compose(HttpClientResponse::body)
-                  .onComplete(body -> waitForResponse.countDown());
+                  .onComplete(resp -> {
+                    resp.result().bodyHandler(body -> {
+                      totalReceivedLength.addAndGet(body.getBytes().length);
+                      Assert.assertEquals(sampleF.length(), body.getBytes().length);
+                      waitForResponse.countDown();
+                    });
+                  });
       }
     });
     awaitLatch(waitForResponse);
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime.get());
-    Assert.assertTrue(elapsedMillis > 6000); // because there are simultaneous 2 requests
+    Assert.assertTrue(elapsedMillis > expectedTimeMillis(totalReceivedLength.get(), OUTBOUND_LIMIT)); // because there are simultaneous 2 requests
   }
 
   /**
@@ -198,8 +206,8 @@ public class HttpBandwidthLimitingTest extends Http2TestBase {
    * @param rate
    * @return
    */
-  private long expectedTimeMillis(int size, int rate) {
-    return (long) (TimeUnit.MILLISECONDS.convert((size / rate), TimeUnit.SECONDS) * 0.5);
+  private long expectedTimeMillis(long size, int rate) {
+    return (long) (TimeUnit.MILLISECONDS.convert((size / rate), TimeUnit.SECONDS) * 0.5); // multiplied by 0.5 to be more tolerant of time pauses during CI runs
   }
 
   private void read(Buffer expected, HttpServer server, HttpClient client) {
