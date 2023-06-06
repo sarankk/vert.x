@@ -28,7 +28,7 @@ import java.net.InetSocketAddress;
  * @author <a href="http://tfox.org">Tim Fox</a>
  */
 @VertxGen
-public interface SocketAddress {
+public interface SocketAddress extends Address {
 
   /**
    * Create an inet socket address that binds to a shared random port identified by {@code id}.
@@ -125,7 +125,7 @@ public interface SocketAddress {
   int port();
 
   /**
-   * @return the domain socket path or {@code null} for a inet socket address.
+   * @return the domain socket path or {@code null} for inet socket address, empty path represents unnamed domain socket addresses.
    */
   @CacheReturn
   String path();

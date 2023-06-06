@@ -17,6 +17,7 @@ import io.netty.channel.*;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedNioFile;
 import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.traffic.AbstractTrafficShapingHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.EventExecutor;
@@ -403,7 +404,7 @@ public abstract class ConnectionBase {
   protected abstract void handleInterestedOpsChanged();
 
   protected boolean supportsFileRegion() {
-    return vertx.transport().supportFileRegion() && !isSsl();
+    return vertx.transport().supportFileRegion() && !isSsl() &&!isTrafficShaped();
   }
 
   public final void reportBytesRead(Object msg) {
@@ -558,6 +559,10 @@ public abstract class ConnectionBase {
     return chctx.pipeline().get(SslHandler.class) != null;
   }
 
+  public boolean isTrafficShaped() {
+    return chctx.pipeline().get(AbstractTrafficShapingHandler.class) != null;
+  }
+
   public SSLSession sslSession() {
     ChannelHandlerContext sslHandlerContext = chctx.pipeline().context(SslHandler.class);
     if (sslHandlerContext != null) {
@@ -648,6 +653,10 @@ public abstract class ConnectionBase {
 
   private SocketAddress channelLocalAddress() {
     java.net.SocketAddress addr = chctx.channel().localAddress();
+    if (addr == null && channel().getClass().getSimpleName().endsWith("DomainSocketChannel")) {
+      // Workaround bug https://github.com/netty/netty/issues/13417
+      return SocketAddress.domainSocketAddress("");
+    }
     return addr != null ? vertx.transport().convert(addr) : null;
   }
 
